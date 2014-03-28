@@ -69,12 +69,17 @@ type Album struct {
 }
 
 type ResponseError struct {
-	Error *Error
+	Error *struct {
+		ErrorCode int    `json:"error_code"`
+		ErrorMsg  string `json:"error_msg"`
+	}
 }
 
-type Error struct {
-	ErrorCode int    `json:"error_code"`
-	ErrorMsg  string `json:"error_msg"`
+type ResponseAlbums struct {
+	Response struct {
+		Count float64
+		Items []Album
+	}
 }
 
 func getUrl(url string) ([]byte, error) {
@@ -137,7 +142,7 @@ func NewVkApi(appId string, permissions string, version string) *VkApi {
 	accessUrl := strings.Replace(origAccessUrl, "#", "?", -1)
 	parsedUrl, err := url.Parse(accessUrl)
 	if err != nil {
-		panic("Cannot parse accessUrl: " + accessUrl)
+		log.Fatalln("Cannot parse accessUrl:", accessUrl)
 	}
 	fmt.Println(parsedUrl)
 
@@ -150,31 +155,15 @@ func NewVkApi(appId string, permissions string, version string) *VkApi {
 }
 
 func (api *VkApi) UsersGet(ids string) []User {
-	url := "https://api.vk.com/method/users.get" +
-		"?user_ids=" + ids +
-		"&v=" + api.version
-
-	body, err := getUrl(url)
-	if err != nil {
-		log.Fatal("Cannot get url")
-	}
-
 	var response ResponseUsersGet
-	err = json.Unmarshal(body, &response)
-	if err != nil {
-		log.Println(err)
-		log.Fatalln("Cannot get info about ids", ids)
-	}
+	api.request("https://api.vk.com/method/users.get"+
+		"?user_ids="+ids+
+		"&v="+api.version, &response)
 	return response.Response
 }
 
-type ResponseAudioGetCount struct {
-	Response int
-	Error    *Error
-}
-
 func (api *VkApi) AudioGetCount() int {
-	var response ResponseAudioGetCount
+	var response ResponseInt
 	api.request("https://api.vk.com/method/audio.getCount"+
 		"?access_token="+api.token+
 		"&owner_id="+api.userId+
@@ -196,28 +185,16 @@ func getAlbumNameById(id int, albums *[]Album) string {
 }
 
 func (api *VkApi) AudioGet(offset int, count int, albums *[]Album) []Audio {
-	url := "https://api.vk.com/method/audio.get" +
-		"?access_token=" + api.token +
-		"&owner_id=" + api.userId +
-		"&album_id=0" +
-		// "&audio_ids=1,2"
-		"&need_user=0" +
-		"&offset=" + strconv.Itoa(offset) +
-		"&count=" + strconv.Itoa(count) +
-		"&v=" + api.version
-
-	body, err := getUrl(url)
-	if err != nil {
-		log.Fatal("Cannot get audio")
-	}
-
 	var response ResponseGetAudio
-	err = json.Unmarshal(body, &response)
-	if err != nil {
-		log.Println(err)
-		log.Fatalln("Cannot parse audio get response")
-	}
-
+	api.request("https://api.vk.com/method/audio.get"+
+		"?access_token="+api.token+
+		"&owner_id="+api.userId+
+		"&album_id=0"+
+		// "&audio_ids=1,2"
+		"&need_user=0"+
+		"&offset="+strconv.Itoa(offset)+
+		"&count="+strconv.Itoa(count)+
+		"&v="+api.version, &response)
 	for i, v := range response.Response.Items {
 		v.Artist = html.UnescapeString(strings.Trim(v.Artist, " "))
 		v.Title = html.UnescapeString(strings.Trim(v.Title, " "))
@@ -225,15 +202,7 @@ func (api *VkApi) AudioGet(offset int, count int, albums *[]Album) []Audio {
 		v.Path = strings.Replace(v.Artist+" - "+v.Title+".mp3", "/", "-", -1)
 		response.Response.Items[i] = v
 	}
-
 	return response.Response.Items
-}
-
-type ResponseAlbums struct {
-	Response struct {
-		Count float64
-		Items []Album
-	}
 }
 
 func (api *VkApi) AudioGetAlbums() []Album {
@@ -247,46 +216,24 @@ func (api *VkApi) AudioGetAlbums() []Album {
 }
 
 func (api *VkApi) AudioAddAlbum(title string) int {
-	url := "https://api.vk.com/method/audio.addAlbum" +
-		"?owner_id=" + api.userId +
-		"&title=" + title +
-		"&access_token=" + api.token +
-		"&v=" + api.version
-
-	body, err := getUrl(url)
-	if err != nil {
-		log.Fatal("Cannot get url")
-	}
-
 	var response ResponseAudioAddAlbum
-	err = json.Unmarshal(body, &response)
-	if err != nil {
-		log.Println(err)
-		log.Fatalln("Cannot add album")
-	}
+	api.request("https://api.vk.com/method/audio.addAlbum"+
+		"?owner_id="+api.userId+
+		"&title="+title+
+		"&access_token="+api.token+
+		"&v="+api.version, &response)
 	return response.Response.AlbumId
 }
 
 func (api *VkApi) AudioMoveToAlbum(album_id int, audio_ids string) bool {
 	time.Sleep(1 * time.Second)
 
-	url := "https://api.vk.com/method/audio.moveToAlbum" +
-		"?owner_id=" + api.userId +
-		"&album_id=" + strconv.Itoa(album_id) +
-		"&audio_ids=" + audio_ids +
-		"&access_token=" + api.token +
-		"&v=" + api.version
-
-	body, err := getUrl(url)
-	if err != nil {
-		log.Fatal("Cannot get url")
-	}
-
 	var response ResponseInt
-	err = json.Unmarshal(body, &response)
-	if err != nil {
-		log.Println(err)
-		log.Fatalln("Cannot move to ablum")
-	}
+	api.request("https://api.vk.com/method/audio.moveToAlbum"+
+		"?owner_id="+api.userId+
+		"&album_id="+strconv.Itoa(album_id)+
+		"&audio_ids="+audio_ids+
+		"&access_token="+api.token+
+		"&v="+api.version, &response)
 	return response.Response == 1
 }
