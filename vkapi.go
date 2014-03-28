@@ -62,13 +62,6 @@ type ResponseInt struct {
 	Response int
 }
 
-type ResponseAlbums struct {
-	Response struct {
-		Count float64
-		Items []Album
-	}
-}
-
 type Album struct {
 	Id      int
 	OwnerId int `json:"owner_id"`
@@ -244,24 +237,24 @@ func (api *VkApi) AudioGet(offset int, count int, albums *[]Album) []Audio {
 	return response.Response.Items
 }
 
+type ResponseAlbums struct {
+	Response struct {
+		Count float64
+		Items []Album
+	}
+}
+
+func (self *ResponseAlbums) Parse(body []byte) (err error) {
+	return json.Unmarshal(body, self)
+}
+
 func (api *VkApi) AudioGetAlbums() []Album {
-	url := "https://api.vk.com/method/audio.getAlbums" +
-		"?owner_id=" + api.userId +
-		"&count=100" +
-		"&access_token=" + api.token +
-		"&v=" + api.version
-
-	body, err := getUrl(url)
-	if err != nil {
-		log.Fatal("Cannot get url")
-	}
-
 	var response ResponseAlbums
-	err = json.Unmarshal(body, &response)
-	if err != nil {
-		log.Println(err)
-		log.Fatalln("Cannot get albums")
-	}
+	api.request("https://api.vk.com/method/audio.getAlbums"+
+		"?owner_id="+api.userId+
+		"&count=100"+
+		"&access_token="+api.token+
+		"&v="+api.version, &response)
 	return response.Response.Items
 }
 

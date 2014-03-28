@@ -108,10 +108,10 @@ func main() {
 
 	audioCount := api.AudioGetCount()
 	fmt.Println("Number of media files:", audioCount)
-	return
 
 	albums := api.AudioGetAlbums()
 	fmt.Println("Albums:", albums)
+	return
 
 	cloudAlbumToId := make(map[string]int)
 	for _, v := range albums {
