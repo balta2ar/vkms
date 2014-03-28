@@ -95,7 +95,7 @@ func getUrl(url string) ([]byte, error) {
 	return body, nil
 }
 
-func (api *VkApi) request(url string, method ApiMethod) {
+func (api *VkApi) request(url string, obj interface{}) {
 	body, err := getUrl(url)
 	if err != nil {
 		log.Fatal("Cannot get url", url)
@@ -111,7 +111,7 @@ func (api *VkApi) request(url string, method ApiMethod) {
 		log.Println(*response.Error)
 		log.Fatalln("Error is set, cannot continue")
 	}
-	err = method.Parse(body)
+	err = json.Unmarshal(body, obj)
 	if err != nil {
 		log.Println(err)
 		log.Fatalln("Cannot parse response as ConcreteType")
@@ -132,8 +132,8 @@ func NewVkApi(appId string, permissions string, version string) *VkApi {
 	//token := "1cfaad4ed9fe6939fb"
 	// accessUrl := "https://oauth.vk.com/blank.html#access_token=52ed549020d20ceb119697bb76acad7b250322f98d22026fbb237de039cad3155217b37eb524d964d05d3&expires_in=86400&user_id=1476677"
 	//origAccessUrl := "https://oauth.vk.com/blank.html#access_token=fc1cdebd37d11fc960bbf5324da719b21944d233c03a23e61e2ccba9fc28ecc02f6c4105ba7ec9d349a54&expires_in=86400&user_id=1476677"
-	origAccessUrl := "https://oauth.vk.com/blank.html#access_token=106c505b979f4738b1292735d58c8a106fb1e1e7058051d2323f934d9b98468113c928d5dc432cd16b2e7&expires_in=86400&user_id=1476677"
 	//"https://oauth.vk.com/blank.html#access_token=197a1185e3ce26a57098c994de532f23bc2e8ab715356526f97c43d64817d523a1b69fd08a53c6fabb71a&expires_in=86400&user_id=1476677"
+	origAccessUrl := "https://oauth.vk.com/blank.html#access_token=106c505b979f4738b1292735d58c8a106fb1e1e7058051d2323f934d9b98468113c928d5dc432cd16b2e7&expires_in=86400&user_id=1476677"
 	accessUrl := strings.Replace(origAccessUrl, "#", "?", -1)
 	parsedUrl, err := url.Parse(accessUrl)
 	if err != nil {
@@ -168,17 +168,9 @@ func (api *VkApi) UsersGet(ids string) []User {
 	return response.Response
 }
 
-type ApiMethod interface {
-	Parse(body []byte) (err error)
-}
-
 type ResponseAudioGetCount struct {
 	Response int
 	Error    *Error
-}
-
-func (self *ResponseAudioGetCount) Parse(body []byte) (err error) {
-	return json.Unmarshal(body, self)
 }
 
 func (api *VkApi) AudioGetCount() int {
@@ -242,10 +234,6 @@ type ResponseAlbums struct {
 		Count float64
 		Items []Album
 	}
-}
-
-func (self *ResponseAlbums) Parse(body []byte) (err error) {
-	return json.Unmarshal(body, self)
 }
 
 func (api *VkApi) AudioGetAlbums() []Album {
