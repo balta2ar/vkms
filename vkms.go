@@ -97,30 +97,41 @@ func moveAudiosToAlbums(
 func main() {
 	log.Println("Hello")
 
-	api := NewVkApi(APP_ID, PERMISSIONS, API_VERSION)
-	name := "id" + api.userId
-	users := api.UsersGet(name)
-	first := users[0]
-	user := first.FirstName + " " + first.LastName +
-		" (" + name + ", " + strconv.Itoa(first.Id) + ")"
-	fmt.Println(users)
-	fmt.Println(user)
+	var api *VkApi = nil
+	api = NewVkApi(APP_ID, PERMISSIONS, API_VERSION)
+	log.Println("API created")
 
-	audioCount := api.AudioGetCount()
+	// make sure we have valid token first
+	valid := false
+	for i := 0; i < 3; i++ {
+		count, err := api.AudioGetCount()
+		log.Println("AudioGetCount:", i, count, err)
+		if err == nil {
+			log.Println("Count", count, "Token received:", api.Token)
+			valid = true
+			break
+		}
+	}
+	if !valid {
+		log.Fatalln("Failed to get a valid token")
+	}
+
+	api.saveToken(TOKEN_FILENAME)
+	audioCount, _ := api.AudioGetCount()
 	fmt.Println("Number of media files:", audioCount)
 
 	albums := api.AudioGetAlbums()
 	fmt.Println("Albums:", albums)
-	return
 
 	cloudAlbumToId := make(map[string]int)
 	for _, v := range albums {
 		cloudAlbumToId[v.Title] = v.Id
 	}
 
+	// audioCount = 1
 	audios := api.AudioGet(0, audioCount, &albums)
-	localState := populateLocalAudios(user)
-	audiosToMove := calculateAudiosToMove(user, audios, localState)
+	localState := populateLocalAudios(api.User)
+	audiosToMove := calculateAudiosToMove(api.User, audios, localState)
 	moveAudiosToAlbums(audiosToMove, cloudAlbumToId, api)
 
 	log.Println("Done")
