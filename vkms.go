@@ -99,7 +99,6 @@ func main() {
 
 	var api *VkApi = nil
 	api = NewVkApi(APP_ID, PERMISSIONS, API_VERSION)
-	log.Println("API created")
 
 	// make sure we have valid token first
 	valid := false
@@ -118,10 +117,10 @@ func main() {
 
 	api.saveToken(TOKEN_FILENAME)
 	audioCount, _ := api.AudioGetCount()
-	fmt.Println("Number of media files:", audioCount)
+	log.Println("Number of media files:", audioCount)
 
 	albums := api.AudioGetAlbums()
-	fmt.Println("Albums:", albums)
+	log.Println("Albums:", albums)
 
 	cloudAlbumToId := make(map[string]int)
 	for _, v := range albums {

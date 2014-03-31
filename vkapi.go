@@ -89,7 +89,6 @@ type ResponseAlbums struct {
 
 func getUrl(url string) ([]byte, error) {
 	resp, err := http.Get(url)
-	//fmt.Println(resp)
 	if err != nil {
 		log.Println("Cannot get audio")
 		return nil, err
@@ -100,7 +99,6 @@ func getUrl(url string) ([]byte, error) {
 		log.Println("Cannot read body")
 		return nil, err
 	}
-	//fmt.Println(body)
 	ioutil.WriteFile("body.txt", body, 0600)
 	return body, nil
 }
@@ -123,7 +121,6 @@ func (api *VkApi) handleError(response ResponseError) bool {
 }
 
 func (api *VkApi) request(url string, obj interface{}) error {
-	log.Println("request: url:", url)
 	body, err := getUrl(url)
 	if err != nil {
 		log.Fatal("Cannot get url", url)
@@ -185,9 +182,7 @@ func getNewToken(appId string, permissions string, version string) (token string
 
 	token = parsedUrl.Query().Get("access_token")
 	userId = parsedUrl.Query().Get("user_id")
-	fmt.Println("token:", token)
-	fmt.Println("user_id:", userId)
-	fmt.Println("expires_in:", parsedUrl.Query().Get("expires_in"))
+	log.Println("token:", token, "user_id", userId)
 	return
 }
 
@@ -219,42 +214,12 @@ func (api *VkApi) saveToken(path string) {
 }
 
 func NewVkApi(appId string, permissions string, version string) *VkApi {
-	// authUrl := "https://oauth.vk.com/authorize" +
-	// 	"?client_id=" + appId +
-	// 	"&scope=" + permissions +
-	// 	"&redirect_uri=https://oauth.vk.com/blank.html" +
-	// 	"&display=page" +
-	// 	"&v=" + version +
-	// 	"&response_type=token"
-
-	// fmt.Println(authUrl)
-
-	// //token := "1cfaad4ed9fe6939fb"
-	// // accessUrl := "https://oauth.vk.com/blank.html#access_token=52ed549020d20ceb119697bb76acad7b250322f98d22026fbb237de039cad3155217b37eb524d964d05d3&expires_in=86400&user_id=1476677"
-	// //origAccessUrl := "https://oauth.vk.com/blank.html#access_token=fc1cdebd37d11fc960bbf5324da719b21944d233c03a23e61e2ccba9fc28ecc02f6c4105ba7ec9d349a54&expires_in=86400&user_id=1476677"
-	// //"https://oauth.vk.com/blank.html#access_token=197a1185e3ce26a57098c994de532f23bc2e8ab715356526f97c43d64817d523a1b69fd08a53c6fabb71a&expires_in=86400&user_id=1476677"
-
-	// //origAccessUrl := "https://oauth.vk.com/blank.html#access_token=1b0f7f0cf3f437de6ab4b27e81574eb5d3eca6eb510521601f1f87d377df211c2ef8b906a95a04d5a663a&expires_in=86400&user_id=1476677"
-	// origAccessUrl := "https://oauth.vk.com/blank.html#access_token=106c505b979f4738b1292735d58c8a106fb1e1e7058051d2323f934d9b98468113c928d5dc432cd16b2e7&expires_in=86400&user_id=1476677"
-	// accessUrl := strings.Replace(origAccessUrl, "#", "?", -1)
-	// parsedUrl, err := url.Parse(accessUrl)
-	// if err != nil {
-	// 	log.Fatalln("Cannot parse accessUrl:", accessUrl)
-	// }
-	// fmt.Println(parsedUrl)
 	token, userId, err := loadToken(TOKEN_FILENAME)
 	log.Println(token, userId, err)
 
 	if err != nil {
 		token, userId, err = getNewToken(appId, permissions, version)
-		log.Println("after getNewToken: ", token, userId, err)
 	}
-
-	// token := parsedUrl.Query().Get("access_token")
-	// userId := parsedUrl.Query().Get("user_id")
-	// fmt.Println("token:", token)
-	// fmt.Println("user_id:", userId)
-	// fmt.Println("expires_in:", parsedUrl.Query().Get("expires_in"))
 
 	api := &VkApi{token, userId, version, ""}
 
@@ -263,8 +228,6 @@ func NewVkApi(appId string, permissions string, version string) *VkApi {
 	first := users[0]
 	user := first.FirstName + " " + first.LastName +
 		" (" + name + ", " + strconv.Itoa(first.Id) + ")"
-	fmt.Println(users)
-	fmt.Println(user)
 	api.User = user
 
 	return api
@@ -279,7 +242,6 @@ func (api *VkApi) UsersGet(ids string) []User {
 }
 
 func (api *VkApi) AudioGetCount() (int, error) {
-	log.Println("Getting audio count")
 	var response ResponseInt
 	err := api.request("https://api.vk.com/method/audio.getCount"+
 		"?access_token="+api.Token+
@@ -343,6 +305,7 @@ func (api *VkApi) AudioAddAlbum(title string) int {
 }
 
 func (api *VkApi) AudioMoveToAlbum(album_id int, audio_ids string) bool {
+	// hacky way to avert flood control
 	time.Sleep(1 * time.Second)
 
 	var response ResponseInt
