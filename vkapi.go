@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -263,7 +264,7 @@ func getAlbumNameById(id int, albums *[]Album) string {
 	return ""
 }
 
-func (api *VkApi) AudioGet(offset int, count int, albums *[]Album) []Audio {
+func (api *VkApi) AudioGet(offset int, count int, albums *[]Album, base string) []Audio {
 	var response ResponseGetAudio
 	api.request("https://api.vk.com/method/audio.get"+
 		"?access_token="+api.Token+
@@ -278,7 +279,8 @@ func (api *VkApi) AudioGet(offset int, count int, albums *[]Album) []Audio {
 		v.Artist = html.UnescapeString(strings.Trim(v.Artist, " "))
 		v.Title = html.UnescapeString(strings.Trim(v.Title, " "))
 		v.Album = getAlbumNameById(v.AlbumId, albums)
-		v.Path = strings.Replace(v.Artist+" - "+v.Title+".mp3", "/", "-", -1)
+		x := strings.Replace(v.Artist+" - "+v.Title+".mp3", "/", "-", -1)
+		v.Path = filepath.Join(base, v.Album, x)
 		response.Response.Items[i] = v
 	}
 	return response.Response.Items

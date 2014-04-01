@@ -15,16 +15,29 @@ const (
 	API_VERSION = "5.16"
 )
 
-func populateLocalAudios(path string) map[string]string {
+func getAlbumFromPath(path string, user string) string {
+	i := strings.Index(path, user)
+	p := i + len(user) + 1
+	rest := path[p:]
+
+	xs := strings.Split(rest, "/")
+	if len(xs) > 1 {
+		return filepath.Join(xs[0 : len(xs)-1]...)
+	} else {
+		return ""
+	}
+}
+
+func populateLocalAudios(path string, user string) map[string]string {
 	// path -> album
 	localState := make(map[string]string)
 
 	visit := func(path string, f os.FileInfo, err error) error {
+		if f == nil {
+			return nil
+		}
 		if !f.IsDir() {
-			xs := strings.Split(path, "/")[1:]
-			album := filepath.Join(xs[0 : len(xs)-1]...)
-			path := xs[len(xs)-1]
-			localState[path] = album
+			localState[path] = getAlbumFromPath(path, user)
 		}
 		return nil
 	}
@@ -43,7 +56,7 @@ func calculateAudiosToMove(
 		localAlbum, ok := localState[v.Path]
 		if ok {
 			// we have file with such name locally
-			localPath := filepath.Join(path, localAlbum, v.Path)
+			localPath := v.Path
 			if urlSize(v.Url) != fileSize(localPath) {
 				log.Println("different size, download", v.Title)
 				download(v.Url, localPath)
@@ -61,7 +74,7 @@ func calculateAudiosToMove(
 			}
 		} else {
 			// file is not present locally
-			localPath := filepath.Join(path, v.Album, v.Path)
+			localPath := v.Path
 			log.Println("missing locally, download", v.Title)
 			download(v.Url, localPath)
 		}
@@ -96,6 +109,10 @@ func moveAudiosToAlbums(
 
 func main() {
 	log.Println("Hello")
+	base := "."
+	if len(os.Args) > 1 {
+		base = os.Args[1]
+	}
 
 	var api *VkApi = nil
 	api = NewVkApi(APP_ID, PERMISSIONS, API_VERSION)
@@ -127,10 +144,10 @@ func main() {
 		cloudAlbumToId[v.Title] = v.Id
 	}
 
-	// audioCount = 1
-	audios := api.AudioGet(0, audioCount, &albums)
-	localState := populateLocalAudios(api.User)
-	audiosToMove := calculateAudiosToMove(api.User, audios, localState)
+	path := filepath.Join(base, api.User)
+	audios := api.AudioGet(0, audioCount, &albums, path)
+	localState := populateLocalAudios(path, api.User)
+	audiosToMove := calculateAudiosToMove(path, audios, localState)
 	moveAudiosToAlbums(audiosToMove, cloudAlbumToId, api)
 
 	log.Println("Done")
