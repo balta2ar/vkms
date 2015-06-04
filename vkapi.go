@@ -25,6 +25,7 @@ const (
 type VkApi struct {
 	Token   string
 	UserId  string
+	UUserId string
 	Version string
 	User    string
 }
@@ -46,6 +47,13 @@ type Audio struct {
 	Duration int
 	GenreId  int `json:"genre_id"`
 	OwnerId  int `json:"owner_id"`
+}
+
+type ResponseUtilsScreenName struct {
+	Response struct {
+		Type     string
+		ObjectId float64 `json:"object_id"`
+	}
 }
 
 type ResponseUsersGet struct {
@@ -214,7 +222,7 @@ func (api *VkApi) saveToken(path string) {
 	}
 }
 
-func NewVkApi(appId string, permissions string, version string) *VkApi {
+func NewVkApi(appId string, permissions string, version string, user string) *VkApi {
 	token, userId, err := loadToken(TOKEN_FILENAME)
 	log.Println(token, userId, err)
 
@@ -222,14 +230,25 @@ func NewVkApi(appId string, permissions string, version string) *VkApi {
 		token, userId, err = getNewToken(appId, permissions, version)
 	}
 
-	api := &VkApi{token, userId, version, ""}
+	api := &VkApi{token, userId, userId, version, ""}
 
 	name := "id" + api.UserId
 	users := api.UsersGet(name)
 	first := users[0]
-	user := first.FirstName + " " + first.LastName +
+	userName := first.FirstName + " " + first.LastName +
 		" (" + name + ", " + strconv.Itoa(first.Id) + ")"
-	api.User = user
+	api.User = userName
+
+	if user != "" {
+		log.Println("getting id for user " + user)
+		resp := api.UtilsResolveScreenName(user)
+		userId := strconv.Itoa(int(resp.Response.ObjectId))
+		if resp.Response.Type == "group" {
+			userId = "-" + userId
+		}
+		log.Println("user " + user + " id " + userId + " type " + resp.Response.Type)
+		api.UUserId = userId
+	}
 
 	return api
 }
@@ -240,6 +259,14 @@ func (api *VkApi) UsersGet(ids string) []User {
 		"?user_ids="+ids+
 		"&v="+api.Version, &response)
 	return response.Response
+}
+
+func (api *VkApi) UtilsResolveScreenName(name string) ResponseUtilsScreenName {
+	var response ResponseUtilsScreenName
+	api.request("https://api.vk.com/method/utils.resolveScreenName"+
+		"?screen_name="+name+
+		"&v="+api.Version, &response)
+	return response
 }
 
 func (api *VkApi) AudioGetCount() (int, error) {
@@ -268,7 +295,7 @@ func (api *VkApi) AudioGet(offset int, count int, albums *[]Album, base string) 
 	var response ResponseGetAudio
 	api.request("https://api.vk.com/method/audio.get"+
 		"?access_token="+api.Token+
-		"&owner_id="+api.UserId+
+		"&owner_id="+api.UUserId+
 		"&album_id=0"+
 		// "&audio_ids=1,2"
 		"&need_user=0"+
@@ -289,7 +316,7 @@ func (api *VkApi) AudioGet(offset int, count int, albums *[]Album, base string) 
 func (api *VkApi) AudioGetAlbums() []Album {
 	var response ResponseAlbums
 	api.request("https://api.vk.com/method/audio.getAlbums"+
-		"?owner_id="+api.UserId+
+		"?owner_id="+api.UUserId+
 		"&count=100"+
 		"&access_token="+api.Token+
 		"&v="+api.Version, &response)
